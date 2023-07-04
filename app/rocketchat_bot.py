@@ -1,6 +1,7 @@
 import requests
 import time
 import logging
+from jira_client import JiraClient
 
 
 def catch_exceptions(func):
@@ -55,16 +56,16 @@ class RocketChatBot:
         data = {'roomId': room_id, 'text': message}
         requests.post(send_msg_url, headers=headers, json=data)
 
-    @catch_exceptions
-    def delete_message(self, message_id):
-        """Удаление сообщения по ID"""
-        delete_msg_url = self.base_url + 'chat.delete'
-        headers = {
-            'X-Auth-Token': self.auth_token,
-            'X-User-Id': self.bot_id,
-        }
-        data = {'roomId': message_id}
-        requests.post(delete_msg_url, headers=headers, json=data)
+    # @catch_exceptions
+    # def delete_message(self, message_id):
+    #     """Удаление сообщения по ID"""
+    #     delete_msg_url = self.base_url + 'chat.delete'
+    #     headers = {
+    #         'X-Auth-Token': self.auth_token,
+    #         'X-User-Id': self.bot_id,
+    #     }
+    #     data = {'roomId': message_id}
+    #     requests.post(delete_msg_url, headers=headers, json=data)
 
     @catch_exceptions
     def send_message_with_button(self, room_id, message):
@@ -124,15 +125,24 @@ class RocketChatBot:
                 room_id = dm['_id']
 
                 if message_text == 'Создать задачу':
+                    # JiraClient.connect()
+                    jira_client = JiraClient()
+                    projects = jira_client.get_projects()
+                    project_list = '\n'.join(projects)
+                    # Преобразовываем список в строку, разделяя названия проектов переводом строки
+                    self.send_message(
+                        room_id, 'Список проектов в Jira:\n' + project_list
+                    )
+
                     self.send_message(room_id, 'Введите название проекта:')
-                    self.delete_message(last_msg['_id'])
+                    # self.delete_message(last_msg['_id'])
                 else:
                     self.send_message_with_button(
                         room_id,
                         'Привет, я помогу тебе создать задачу в Jira. Нажимай на кнопку "Создать задачу".',
                     )
 
-    def main(self):
+    def run(self):
         """Основная функция, выполняющая запуск бота на получение сообщений"""
         self.get_auth_token()
         self.set_status('online')

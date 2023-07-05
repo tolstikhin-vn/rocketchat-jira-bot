@@ -1,11 +1,9 @@
-from jira import JIRA
 import json
-
+from jira import JIRA
 
 class JiraClient:
     def __init__(self):
         self.jira = None
-        # self.projects = None
         self.project_name = None
 
     def connect(self):

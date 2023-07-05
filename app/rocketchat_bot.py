@@ -1,6 +1,6 @@
+import logging
 import requests
 import time
-import logging
 from jira_client import JiraClient
 
 

@@ -34,7 +34,7 @@ class RocketChatBot:
     @catch_exceptions
     def get_auth_token(self):
         """Получить токен авторизации по логину и паролю бота-пользователя для работы от его лица"""
-        login_url = self.base_url + 'login'
+        login_url = f'{self.base_url}login'
         data = {'user': self.username, 'password': self.password}
         response = requests.post(login_url, json=data)
         response.raise_for_status()
@@ -42,12 +42,11 @@ class RocketChatBot:
 
     @catch_exceptions
     def set_status(self, status_name):
-        """Задать статус боту"""
-        set_status_url = self.base_url + 'users.setStatus'
+        """Задать статус бота"""
+        set_status_url = f'{self.base_url}users.setStatus'
         headers = {
             'X-Auth-Token': self.auth_token,
             'X-User-Id': self.bot_id,
-            'Content-Type': 'application/json',
         }
         status_data = {'status': status_name}
         requests.post(set_status_url, headers=headers, json=status_data)
@@ -55,7 +54,7 @@ class RocketChatBot:
     @catch_exceptions
     def send_message(self, data):
         """Отправить сообщения в чат"""
-        send_msg_url = self.base_url + 'chat.postMessage'
+        send_msg_url = f'{self.base_url}chat.postMessage'
         headers = {
             'X-Auth-Token': self.auth_token,
             'X-User-Id': self.bot_id,
@@ -66,7 +65,7 @@ class RocketChatBot:
     @catch_exceptions
     def get_direct_messages(self):
         """Получить список сообщений"""
-        dm_url = self.base_url + 'im.list'
+        dm_url = f'{self.base_url}im.list'
         headers = {
             'X-Auth-Token': self.auth_token,
             'X-User-Id': self.bot_id,

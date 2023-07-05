@@ -1,4 +1,5 @@
 import json
+import logging
 from rocketchat_bot import RocketChatBot
 
 if __name__ == '__main__':
@@ -14,4 +15,10 @@ if __name__ == '__main__':
     bot = RocketChatBot(base_url, username, password, bot_id)
 
     # Запуск бота
-    bot.run()
+    try:
+        bot.run()
+        raise RuntimeError()
+    except Exception as ex:
+        logging.exception(f'Возникло исключение: {ex}')
+    finally:
+        bot.set_status('offline')

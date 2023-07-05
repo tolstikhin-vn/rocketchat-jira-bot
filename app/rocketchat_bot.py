@@ -1,7 +1,7 @@
 import logging
 import requests
 import time
-from jira_client import JiraClient
+from jira_client import Issue, JiraClient
 
 
 def catch_exceptions(func):
@@ -19,9 +19,13 @@ def catch_exceptions(func):
 # Экземпляр класса JiraClient
 jira_client = None
 
+# Экземпляр класса Issue
+issue = Issue()
+
 
 class RocketChatBot:
 
+    # Текущая стадия создания задачи
     creation_stage = 0
 
     def __init__(self, base_url, username, password, bot_id):
@@ -116,7 +120,6 @@ class RocketChatBot:
         # Стадия 1 - ожидание ввода названия проекта от пользователя
         elif creation_stage == 1:
             jira_client = JiraClient()
-            # jira_client.set_projects(jira_client.get_init_projects())
             projects = jira_client.get_projects()
 
             project_list = '\n'.join([project.name for project in projects])
@@ -143,7 +146,7 @@ class RocketChatBot:
             if any(message_text == project.name for project in projects):
                 self.send_message(
                     self.get_base_data(
-                        room_id, 'Введите название для будущей задачи'
+                        room_id, 'Введите название будущей задачи'
                     )
                 )
                 jira_client.set_project_name(message_text)
@@ -156,22 +159,39 @@ class RocketChatBot:
                 )
                 self.creation_stage = 0
 
-        # Стадия 3 - создание задачи исходя изполученных данных от пользователя
         elif creation_stage == 3:
+            issue.set_issue_summary(message_text)
+            self.send_message(
+                self.get_base_data(
+                    room_id, 'Введите описание для будущей задачи'
+                )
+            )
+            self.creation_stage = 4
+
+        # Стадия 4 - создание задачи исходя из полученных данных от пользователя
+        elif creation_stage == 4:
+            issue.set_issue_description(message_text)
             projects = jira_client.get_projects()
 
             for project in projects:
                 if jira_client.get_project_name() == project.name:
                     project_key = project.key
                     break
-            jira_client.create_new_issue(project_key, message_text)
+            issue_summary = issue.get_issue_summary()
+            jira_client.create_new_issue(
+                project_key,
+                issue_summary,
+                issue.get_issue_description(),
+            )
 
             self.send_message(
                 self.get_base_data(
                     room_id,
-                    f'Ваша задача: [клик]({jira_client.get_issue_link(project_key, message_text)})',
+                    f'Ваша задача: [клик]({jira_client.get_issue_link(project_key, issue_summary)})',
                 )
             )
+
+            # Все заново
             self.creation_stage = 0
 
     @catch_exceptions

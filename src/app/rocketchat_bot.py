@@ -17,7 +17,7 @@ def catch_exceptions(func):
     return wrapper
 
 
-# Экземпляр класса JiraClient
+# Будущий экземпляр класса JiraClient
 jira_client = None
 
 # Экземпляр класса Issue
@@ -174,17 +174,23 @@ class RocketChatBot:
             issue.set_issue_description(message_text)
             projects = jira_client.get_projects()
 
+            # Ищем ключ проекта по его названию
             for project in projects:
                 if jira_client.get_project_name() == project.name:
                     project_key = project.key
                     break
+
+            # Получаем название задачи
             issue_summary = issue.get_issue_summary()
+
+            # Создаем новую задачу
             jira_client.create_new_issue(
                 project_key,
                 issue_summary,
                 issue.get_issue_description(),
             )
 
+            # Получаем ссылку на задачу
             task_link = jira_client.get_issue_link(project_key, issue_summary)
 
             self.send_message(
@@ -194,8 +200,8 @@ class RocketChatBot:
                 )
             )
 
-            # Добавляем пользователя чата в БД, если он еще не доабвлен
-            # models.insert_task_record(user_id, task_link)
+            # Добавляем запись о создании задачи
+            models.insert_task_record(user_id, task_link)
 
             # Все заново
             self.creation_stage = 0

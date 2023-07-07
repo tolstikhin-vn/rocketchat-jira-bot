@@ -81,13 +81,13 @@ class RocketChatBot:
         return dms
 
     def get_data_for_stage_0(self, room_id, message):
+
         return {
             'channel': room_id,
             'text': message,
             'attachments': [
                 {
                     'color': '#FFFFFF',
-                    'text': ' ',
                     'actions': [
                         {
                             'type': 'button',
@@ -99,6 +99,34 @@ class RocketChatBot:
                             'msg': 'Создать задачу',
                         }
                     ],
+                }
+            ],
+        }
+
+    def get_data_for_stage_1(self, room_id, projects):
+        """Получение представление для вывода списка проектов в чат"""
+        actions = []
+
+        # Сгенерировать кнопки по количеству проектов
+        for project in projects:
+            action = {
+                'type': 'button',
+                'text': project.name,
+                'msg_in_chat_window': True,
+                'button_alignment': 'vertical',
+                'button_color': '#FF0000',
+                'button_text_color': '#FFFFFF',
+                'msg': project.name,
+            }
+            actions.append(action)
+
+        return {
+            'channel': room_id,
+            'text': 'Выберите проект:',
+            'attachments': [
+                {
+                    'color': '#FFFFFF',
+                    'actions': actions,
                 }
             ],
         }
@@ -118,24 +146,20 @@ class RocketChatBot:
                     'Привет, я помогу тебе создать задачу в Jira. Нажимай на кнопку "Создать задачу".',
                 ),
             )
+
         # Стадия 1 - ожидание ввода названия проекта от пользователя
         elif creation_stage == 1:
             jira_client = JiraClient()
             projects = jira_client.get_projects()
 
-            project_list = '\n'.join([project.name for project in projects])
-            # Преобразовываем список в строку, разделяя названия проектов переводом строки
+            # Бот отправляет в чат список проектов в виде кнопок
             self.send_message(
-                self.get_base_data(
-                    room_id, 'Список доступных проектов:\n' + project_list
-                )
-            )
-            self.send_message(
-                self.get_base_data(
+                self.get_data_for_stage_1(
                     room_id,
-                    'Напишите название проекта, для которого нужно создать задачу',
+                    projects,
                 )
             )
+
             # Перейти на следующую стадию
             self.creation_stage = 2
 

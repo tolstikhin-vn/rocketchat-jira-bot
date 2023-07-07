@@ -81,13 +81,11 @@ class RocketChatBot:
         return dms
 
     def get_data_for_stage_0(self, room_id, message):
-
         return {
             'channel': room_id,
             'text': message,
             'attachments': [
                 {
-                    'color': '#FFFFFF',
                     'actions': [
                         {
                             'type': 'button',
@@ -98,8 +96,21 @@ class RocketChatBot:
                             'button_text_color': '#FFFFFF',
                             'msg': 'Создать задачу',
                         }
-                    ],
-                }
+                    ]
+                },
+                {
+                    'actions': [
+                        {
+                            'type': 'button',
+                            'text': 'Начать заново',
+                            'msg_in_chat_window': True,
+                            'button_alignment': 'vertical',
+                            'button_color': '#FF0000',
+                            'button_text_color': '#FFFFFF',
+                            'msg': 'Начать заново',
+                        }
+                    ]
+                },
             ],
         }
 
@@ -143,7 +154,8 @@ class RocketChatBot:
             self.send_message(
                 self.get_data_for_stage_0(
                     room_id,
-                    'Привет, я помогу тебе создать задачу в Jira. Нажимай на кнопку "Создать задачу".',
+                    'Привет, я помогу тебе создать задачу в Jira. Нажимай на кнопку "Создать задачу". \
+                        Или жми "Начать заново", чтобы сбросить ткущий прогресс создания задачи.',
                 ),
             )
 
@@ -249,6 +261,8 @@ class RocketChatBot:
 
                 if message_text == 'Создать задачу':
                     self.creation_stage = 1
+                elif message_text == 'Начать заново':
+                    self.creation_stage = 0
 
                 self.go_to_next_stage(
                     self.creation_stage, room_id, message_text, user_id

@@ -81,6 +81,7 @@ class RocketChatBot:
         return dms
 
     def get_data_for_stage_0(self, room_id, message):
+        """Получение предствления для вывода сообщения с кнопкой создания задачи"""
         return {
             'channel': room_id,
             'text': message,

@@ -87,6 +87,7 @@ class RocketChatBot:
             'text': message,
             'attachments': [
                 {
+                    'color': '#FFFFFF',
                     'actions': [
                         {
                             'type': 'button',
@@ -97,7 +98,7 @@ class RocketChatBot:
                             'button_text_color': '#FFFFFF',
                             'msg': 'Создать задачу',
                         }
-                    ]
+                    ],
                 },
                 {
                     'actions': [
@@ -112,6 +113,34 @@ class RocketChatBot:
                         }
                     ]
                 },
+            ],
+        }
+
+    def get_data_for_stage_1(self, room_id, projects):
+        """Получение представление для вывода списка проектов в чат"""
+        actions = []
+
+        # Сгенерировать кнопки по количеству проектов
+        for project in projects:
+            action = {
+                'type': 'button',
+                'text': project.name,
+                'msg_in_chat_window': True,
+                'button_alignment': 'vertical',
+                'button_color': '#FF0000',
+                'button_text_color': '#FFFFFF',
+                'msg': project.name,
+            }
+            actions.append(action)
+
+        return {
+            'channel': room_id,
+            'text': 'Выберите проект:',
+            'attachments': [
+                {
+                    'color': '#FFFFFF',
+                    'actions': actions,
+                }
             ],
         }
 

@@ -41,13 +41,13 @@ class JiraClient:
     def get_issue_link(self, project_key, issue_summary):
         # Запрос на поиск задач с указанным названием в проекте
         issues = self.jira.search_issues(
-            f'project={project_key} AND summary~"{issue_summary}"',
-            maxResults=1,
+            f'project={project_key} AND summary~"{issue_summary}"'
         )
         # Проверка, найдены ли задачи
         if len(issues) > 0:
             # Получение ключа последней найденной задачи
-            issue_key = issues[-1].key
+            last_issue = max(issues, key=lambda issue: int(issue.id))
+            issue_key = last_issue.key
             return f'{self.jira.server_url}/browse/{issue_key}'
 
     def get_project_name(self):

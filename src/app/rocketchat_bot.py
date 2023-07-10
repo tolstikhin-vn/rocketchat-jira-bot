@@ -224,7 +224,6 @@ class RocketChatBot:
                         room_id, 'Проект с таким названием не найден.'
                     )
                 )
-                self.creation_stage = 0
 
         elif creation_stage == 3:
             issue.set_issue_summary(message_text)

@@ -275,32 +275,36 @@ class RocketChatBot:
     def process_messages(self):
         """Обработать новое сообщение"""
         dms = self.get_direct_messages()
-        for dm in dms:
-            user_id = dm['lastMessage']['u']['_id']
-            if 'lastMessage' in dm and user_id != self.bot_id:
-                # Добавляем пользователя чата в БД, если он еще не доабвлен
-                models.insert_new_user(
-                    dm['lastMessage']['u']['username'],
-                    user_id,
-                )
+        if dms is not None:
+            for dm in dms:
+                user_id = dm['lastMessage']['u']['_id']
+                if 'lastMessage' in dm and user_id != self.bot_id:
+                    # Добавляем пользователя чата в БД, если он еще не доабвлен
+                    models.insert_new_user(
+                        dm['lastMessage']['u']['username'],
+                        user_id,
+                    )
 
-                last_msg = dm['lastMessage']
-                message_text = last_msg['msg']
-                room_id = dm['_id']
+                    last_msg = dm['lastMessage']
+                    message_text = last_msg['msg']
+                    room_id = dm['_id']
 
-                if message_text == 'Создать задачу':
-                    self.creation_stage = 1
-                elif message_text == 'Начать заново':
-                    self.creation_stage = 0
+                    if message_text == 'Создать задачу':
+                        self.creation_stage = 1
+                    elif message_text == 'Начать заново':
+                        self.creation_stage = 0
 
-                self.go_to_next_stage(
-                    self.creation_stage, room_id, message_text, user_id
-                )
+                    self.go_to_next_stage(
+                        self.creation_stage, room_id, message_text, user_id
+                    )
 
     def run(self):
         """Основная функция, отвечающая за запуск бота"""
         self.get_auth_token()
         self.set_status('online')
         while True:
-            self.process_messages()
-            time.sleep(1)
+            try:
+                self.process_messages()
+                time.sleep(1)
+            except TimeoutError:
+                time.sleep(10)

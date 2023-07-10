@@ -17,7 +17,6 @@ if __name__ == '__main__':
     # Запуск бота
     try:
         bot.run()
-        raise RuntimeError()
     except Exception as ex:
         logging.exception(f'Возникло исключение: {ex}')
     finally:

@@ -4,6 +4,22 @@ import time
 import models
 from jira_client import Issue, JiraClient
 
+CREATE_TASK = 'Создать задачу'
+START_OVER = 'Начать заново'
+ONLINE_STATUS = 'Online'
+WELCOME_MESSAGE = 'Привет, я помогу тебе создать задачу в Jira. Нажимай на кнопку "Создать задачу". \
+                        Или жми "Начать заново", чтобы сбросить ткущий прогресс создания задачи.'
+ENTER_TASK_NAME = 'Введите название будущей задачи'
+PROJECT_NOT_FOUND = 'Проект с таким названием не найден.'
+ENTER_TASK_DESC = 'Введите описание для будущей задачи'
+
+
+# Будущий экземпляр класса JiraClient
+jira_client = None
+
+# Экземпляр класса Issue
+issue = Issue()
+
 
 def catch_exceptions(func):
     """Обработка исключений"""
@@ -15,13 +31,6 @@ def catch_exceptions(func):
             logging.exception(f'Возникло исключение: {ex}')
 
     return wrapper
-
-
-# Будущий экземпляр класса JiraClient
-jira_client = None
-
-# Экземпляр класса Issue
-issue = Issue()
 
 
 class RocketChatBot:
@@ -80,67 +89,34 @@ class RocketChatBot:
         dms = response.json()['ims']
         return dms
 
+    def get_action_structure(self, text, messege):
+        return {
+            'type': 'button',
+            'text': text,
+            'msg_in_chat_window': True,
+            'button_alignment': 'vertical',
+            'button_color': '#FF0000',
+            'button_text_color': '#FFFFFF',
+            'msg': messege,
+        }
+
     def get_data_for_stage_0(self, room_id, message):
         """Получение предствления для вывода сообщения с кнопкой создания задачи"""
+
+        actions = []
+        actions.append(
+            self.get_action_structure(CREATE_TASK, CREATE_TASK),
+            self.get_action_structure(START_OVER, START_OVER),
+        )
+
         return {
             'channel': room_id,
             'text': message,
             'attachments': [
                 {
                     'color': '#FFFFFF',
-                    'actions': [
-                        {
-                            'type': 'button',
-                            'text': 'Создать задачу',
-                            'msg_in_chat_window': True,
-                            'button_alignment': 'vertical',
-                            'button_color': '#FF0000',
-                            'button_text_color': '#FFFFFF',
-                            'msg': 'Создать задачу',
-                        }
-                    ],
-                },
-                {
-                    'actions': [
-                        {
-                            'type': 'button',
-                            'text': 'Начать заново',
-                            'msg_in_chat_window': True,
-                            'button_alignment': 'vertical',
-                            'button_color': '#FF0000',
-                            'button_text_color': '#FFFFFF',
-                            'msg': 'Начать заново',
-                        }
-                    ]
-                },
-            ],
-        }
-
-    def get_data_for_stage_1(self, room_id, projects):
-        """Получение представление для вывода списка проектов в чат"""
-        actions = []
-
-        # Сгенерировать кнопки по количеству проектов
-        for project in projects:
-            action = {
-                'type': 'button',
-                'text': project.name,
-                'msg_in_chat_window': True,
-                'button_alignment': 'vertical',
-                'button_color': '#FF0000',
-                'button_text_color': '#FFFFFF',
-                'msg': project.name,
-            }
-            actions.append(action)
-
-        return {
-            'channel': room_id,
-            'text': 'Выберите проект:',
-            'attachments': [
-                {
-                    'color': '#FFFFFF',
                     'actions': actions,
-                }
+                },
             ],
         }
 
@@ -150,16 +126,9 @@ class RocketChatBot:
 
         # Сгенерировать кнопки по количеству проектов
         for project in projects:
-            action = {
-                'type': 'button',
-                'text': project.name,
-                'msg_in_chat_window': True,
-                'button_alignment': 'vertical',
-                'button_color': '#FF0000',
-                'button_text_color': '#FFFFFF',
-                'msg': project.name,
-            }
-            actions.append(action)
+            actions.append(
+                self.get_action_structure(project.name, project.name)
+            )
 
         return {
             'channel': room_id,
@@ -184,8 +153,7 @@ class RocketChatBot:
             self.send_message(
                 self.get_data_for_stage_0(
                     room_id,
-                    'Привет, я помогу тебе создать задачу в Jira. Нажимай на кнопку "Создать задачу". \
-                        Или жми "Начать заново", чтобы сбросить ткущий прогресс создания задачи.',
+                    WELCOME_MESSAGE,
                 ),
             )
 
@@ -211,27 +179,17 @@ class RocketChatBot:
 
             # Если проект с таким названием существует
             if any(message_text == project.name for project in projects):
-                self.send_message(
-                    self.get_base_data(
-                        room_id, 'Введите название будущей задачи'
-                    )
-                )
+                self.send_message(self.get_base_data(room_id, ENTER_TASK_NAME))
                 jira_client.set_project_name(message_text)
                 self.creation_stage = 3
             else:
                 self.send_message(
-                    self.get_base_data(
-                        room_id, 'Проект с таким названием не найден.'
-                    )
+                    self.get_base_data(room_id, PROJECT_NOT_FOUND)
                 )
 
         elif creation_stage == 3:
             issue.set_issue_summary(message_text)
-            self.send_message(
-                self.get_base_data(
-                    room_id, 'Введите описание для будущей задачи'
-                )
-            )
+            self.send_message(self.get_base_data(room_id, ENTER_TASK_DESC))
             self.creation_stage = 4
 
         # Стадия 4 - создание задачи исходя из полученных данных от пользователя
@@ -289,9 +247,9 @@ class RocketChatBot:
                     message_text = last_msg['msg']
                     room_id = dm['_id']
 
-                    if message_text == 'Создать задачу':
+                    if message_text == CREATE_TASK:
                         self.creation_stage = 1
-                    elif message_text == 'Начать заново':
+                    elif message_text == START_OVER:
                         self.creation_stage = 0
 
                     self.go_to_next_stage(
@@ -301,7 +259,7 @@ class RocketChatBot:
     def run(self):
         """Основная функция, отвечающая за запуск бота"""
         self.get_auth_token()
-        self.set_status('online')
+        self.set_status(ONLINE_STATUS)
         while True:
             try:
                 self.process_messages()

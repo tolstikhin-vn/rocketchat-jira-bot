@@ -52,20 +52,53 @@ def close_session(session):
         logging.error(f'Ошибка при закрытии сессии базы данных: {ex}')
 
 
+def check_user_exists(user_id):
+    """Проверка существования пользователя в БД по user_id"""
+    session = create_session()
+    if session is None:
+        return
+    try:
+        user = session.query(User).filter_by(user_id=user_id).first()
+        return user is not None
+    except SQLAlchemyError as ex:
+        session.rollback()
+        logging.error(
+            f'Возникла ошибка при выполнении операции с базой данных: {ex}'
+        )
+    finally:
+        close_session(session)
+
+
+def check_user_banned(user_id):
+    """Проверка забанен ли пользователь"""
+    session = create_session()
+    if session is None:
+        return
+    try:
+        user = (
+            session.query(User)
+            .filter_by(user_id=user_id, banned=False)
+            .first()
+        )
+        return user is None
+    except SQLAlchemyError as ex:
+        session.rollback()
+        logging.error(
+            f'Возникла ошибка при выполнении операции с базой данных: {ex}'
+        )
+    finally:
+        close_session(session)
+
+
 def insert_new_user(user_name, user_id):
     """Добавить в БД информацию о пользователе, который начал диалог с ботом"""
     session = create_session()
     if session is None:
         return
-
     try:
-        user = session.query(User).filter_by(user_id=user_id).first()
-
-        # Если пользователь не существует, создаем новую запись в таблице users
-        if not user:
-            new_user = User(user_name=user_name, user_id=user_id)
-            session.add(new_user)
-            session.commit()
+        new_user = User(user_name=user_name, user_id=user_id)
+        session.add(new_user)
+        session.commit()
     except SQLAlchemyError as ex:
         session.rollback()
         logging.error(
@@ -108,6 +141,7 @@ class User(Base):
     user_name = Column(String(50), nullable=False)
     user_id = Column(String(20), nullable=False, unique=True)
     is_admin = Column(Boolean, nullable=False, default=False)
+    banned = Column(Boolean, nullable=False, default=False)
 
 
 class TaskLog(Base):

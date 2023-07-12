@@ -6,13 +6,14 @@ from jira_client import Issue, JiraClient
 
 CREATE_TASK = 'Создать задачу'
 START_OVER = 'Начать заново'
-ONLINE_STATUS = 'Online'
+ONLINE_STATUS = 'online'
 WELCOME_MESSAGE = 'Привет, я помогу тебе создать задачу в Jira. Нажимай на кнопку "Создать задачу". \
                         Или жми "Начать заново", чтобы сбросить ткущий прогресс создания задачи.'
 ENTER_TASK_NAME = 'Введите название будущей задачи'
 PROJECT_NOT_FOUND = 'Проект с таким названием не найден.'
 ENTER_TASK_DESC = 'Введите описание для будущей задачи'
-
+ENTER_TASK_DESC = 'Введите описание для будущей задачи'
+USER_BANNED = 'Вы заблокированы администратором!'
 
 # Будущий экземпляр класса JiraClient
 jira_client = None
@@ -104,10 +105,8 @@ class RocketChatBot:
         """Получение предствления для вывода сообщения с кнопкой создания задачи"""
 
         actions = []
-        actions.append(
-            self.get_action_structure(CREATE_TASK, CREATE_TASK),
-            self.get_action_structure(START_OVER, START_OVER),
-        )
+        actions.append(self.get_action_structure(CREATE_TASK, CREATE_TASK))
+        actions.append(self.get_action_structure(START_OVER, START_OVER))
 
         return {
             'channel': room_id,
@@ -236,16 +235,23 @@ class RocketChatBot:
         if dms is not None:
             for dm in dms:
                 user_id = dm['lastMessage']['u']['_id']
+                room_id = dm['_id']
                 if 'lastMessage' in dm and user_id != self.bot_id:
-                    # Добавляем пользователя чата в БД, если он еще не доабвлен
-                    models.insert_new_user(
-                        dm['lastMessage']['u']['username'],
-                        user_id,
-                    )
+                    if models.check_user_exists(user_id):
+                        if models.check_user_banned(user_id):
+                            self.send_message(
+                                self.get_base_data(room_id, USER_BANNED)
+                            )
+                            break
 
+                    else:
+                        # Добавляем пользователя чата в БД, если он еще не доабвлен
+                        models.insert_new_user(
+                            dm['lastMessage']['u']['username'],
+                            user_id,
+                        )
                     last_msg = dm['lastMessage']
                     message_text = last_msg['msg']
-                    room_id = dm['_id']
 
                     if message_text == CREATE_TASK:
                         self.creation_stage = 1

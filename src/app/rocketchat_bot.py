@@ -1,14 +1,16 @@
 import logging
 import requests
 import time
-import models
+
+import database
 from jira_client import Issue, JiraClient
 
 CREATE_TASK = 'Создать задачу'
 START_OVER = 'Начать заново'
+VIEW_LOGS = 'Просмотр логов'
 ONLINE_STATUS = 'online'
 WELCOME_MESSAGE = 'Привет, я помогу тебе создать задачу в Jira. Нажимай на кнопку "Создать задачу". \
-                        Или жми "Начать заново", чтобы сбросить ткущий прогресс создания задачи.'
+                        Или жми "Начать заново", чтобы сбросить текущий прогресс создания задачи.'
 ENTER_TASK_NAME = 'Введите название будущей задачи'
 PROJECT_NOT_FOUND = 'Проект с таким названием не найден.'
 ENTER_TASK_DESC = 'Введите описание для будущей задачи'
@@ -45,6 +47,10 @@ class RocketChatBot:
         self.password = password
         self.bot_id = bot_id
         self.auth_token = None
+
+    # @app.get('/logs', response_class=HTMLResponse)
+    # def get_logs(request: Request):
+    #     return templates.TemplateResponse('logs.html', {'request': request})
 
     @catch_exceptions
     def get_auth_token(self):
@@ -90,24 +96,37 @@ class RocketChatBot:
         dms = response.json()['ims']
         return dms
 
-    def get_action_structure(self, text, messege):
-        return {
+    def get_action_structure(self, text, url, message):
+        action_structure = {
             'type': 'button',
             'text': text,
             'msg_in_chat_window': True,
             'button_alignment': 'vertical',
             'button_color': '#FF0000',
             'button_text_color': '#FFFFFF',
-            'msg': messege,
+            'msg': message,
         }
 
-    def get_data_for_stage_0(self, room_id, message):
+        if url is not None:
+            action_structure['url'] = url
+
+        return action_structure
+
+    def get_data_for_stage_0(self, room_id, message, is_admin):
         """Получение предствления для вывода сообщения с кнопкой создания задачи"""
 
         actions = []
-        actions.append(self.get_action_structure(CREATE_TASK, CREATE_TASK))
-        actions.append(self.get_action_structure(START_OVER, START_OVER))
+        actions.append(
+            self.get_action_structure(CREATE_TASK, None, CREATE_TASK)
+        )
+        actions.append(self.get_action_structure(START_OVER, None, START_OVER))
 
+        if is_admin:
+            actions.append(
+                self.get_action_structure(
+                    VIEW_LOGS, 'http://127.0.0.1:8000/logs', VIEW_LOGS
+                )
+            )
         return {
             'channel': room_id,
             'text': message,
@@ -126,7 +145,7 @@ class RocketChatBot:
         # Сгенерировать кнопки по количеству проектов
         for project in projects:
             actions.append(
-                self.get_action_structure(project.name, project.name)
+                self.get_action_structure(project.name, None, project.name)
             )
 
         return {
@@ -153,6 +172,7 @@ class RocketChatBot:
                 self.get_data_for_stage_0(
                     room_id,
                     WELCOME_MESSAGE,
+                    database.check_user_admin(user_id),
                 ),
             )
 
@@ -223,7 +243,7 @@ class RocketChatBot:
             )
 
             # Добавляем запись о создании задачи
-            models.insert_task_record(user_id, task_link)
+            database.insert_task_record(user_id, task_link)
 
             # Все заново
             self.creation_stage = 0
@@ -237,8 +257,8 @@ class RocketChatBot:
                 user_id = dm['lastMessage']['u']['_id']
                 room_id = dm['_id']
                 if 'lastMessage' in dm and user_id != self.bot_id:
-                    if models.check_user_exists(user_id):
-                        if models.check_user_banned(user_id):
+                    if database.check_user_exists(user_id):
+                        if database.check_user_banned(user_id):
                             self.send_message(
                                 self.get_base_data(room_id, USER_BANNED)
                             )
@@ -246,7 +266,7 @@ class RocketChatBot:
 
                     else:
                         # Добавляем пользователя чата в БД, если он еще не доабвлен
-                        models.insert_new_user(
+                        database.insert_new_user(
                             dm['lastMessage']['u']['username'],
                             user_id,
                         )

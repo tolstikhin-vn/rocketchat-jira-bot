@@ -1,6 +1,7 @@
+from datetime import datetime
 import logging
 import json
-from datetime import datetime
+
 from sqlalchemy import (
     create_engine,
     Column,
@@ -8,8 +9,9 @@ from sqlalchemy import (
     String,
     DateTime,
     Boolean,
+    func,
 )
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.engine.url import URL
@@ -90,6 +92,27 @@ def check_user_banned(user_id):
         close_session(session)
 
 
+def check_user_admin(user_id):
+    """Проверка забанен ли пользователь"""
+    session = create_session()
+    if session is None:
+        return
+    try:
+        user = (
+            session.query(User)
+            .filter_by(user_id=user_id, is_admin=True)
+            .first()
+        )
+        return user is not None
+    except SQLAlchemyError as ex:
+        session.rollback()
+        logging.error(
+            f'Возникла ошибка при выполнении операции с базой данных: {ex}'
+        )
+    finally:
+        close_session(session)
+
+
 def insert_new_user(user_name, user_id):
     """Добавить в БД информацию о пользователе, который начал диалог с ботом"""
     session = create_session()
@@ -134,6 +157,40 @@ def insert_task_record(id_user, task_link):
         close_session(session)
 
 
+def get_logs(project_id, date):
+    session = create_session()
+    if session is None:
+        return
+    try:
+        if date is None:
+            return (
+                session.query(TaskLog, User.user_name, User.user_id)
+                .join(User, TaskLog.user == User.id)
+                .where(TaskLog.project_id == project_id)
+                .order_by(TaskLog.datetime_creating.desc())
+                .all()
+            )
+        else:
+            # Объект выбранной даты из календаря
+            date_obj = datetime.strptime(date, '%Y-%m-%d')
+            return (
+                session.query(TaskLog, User.user_name, User.user_id)
+                .join(User, TaskLog.user == User.id)
+                .where(
+                    TaskLog.project_id == project_id,
+                    func.DATE(TaskLog.datetime_creating) == date_obj,
+                )
+                .order_by(TaskLog.datetime_creating.desc())
+                .all()
+            )
+    except SQLAlchemyError as ex:
+        logging.error(
+            f'Возникла ошибка при выполнении операции с базой данных: {ex}'
+        )
+    finally:
+        close_session(session)
+
+
 class User(Base):
     __tablename__ = 'users'
 
@@ -151,3 +208,4 @@ class TaskLog(Base):
     user = Column(Integer, nullable=False)
     task_link = Column(String(100), nullable=False)
     datetime_creating = Column(DateTime, nullable=False)
+    project_id = Column(DateTime, nullable=False)

@@ -6,19 +6,18 @@ import database
 from jira_client import Issue, JiraClient
 
 CREATE_TASK = 'Создать задачу'
-START_OVER = 'Начать заново'
-VIEW_LOGS = 'Просмотр логов'
+START_OVER = 'Заново'
+VIEW_LOGS = 'Логи'
+BACK = 'Назад'
 ONLINE_STATUS = 'online'
-WELCOME_MESSAGE = 'Привет, я помогу тебе создать задачу в Jira. Нажимай на кнопку "Создать задачу". \
-                        Или жми "Начать заново", чтобы сбросить текущий прогресс создания задачи.'
+WELCOME_MESSAGE = 'Привет, я помогу тебе создать задачу в Jira. Нажимай на кнопку "Создать задачу".'
 ENTER_TASK_NAME = 'Введите название будущей задачи'
 PROJECT_NOT_FOUND = 'Проект с таким названием не найден.'
-ENTER_TASK_DESC = 'Введите описание для будущей задачи'
 ENTER_TASK_DESC = 'Введите описание для будущей задачи'
 USER_BANNED = 'Вы заблокированы администратором!'
 
 # Будущий экземпляр класса JiraClient
-jira_client = None
+jira_client = JiraClient()
 
 # Экземпляр класса Issue
 issue = Issue()
@@ -47,10 +46,6 @@ class RocketChatBot:
         self.password = password
         self.bot_id = bot_id
         self.auth_token = None
-
-    # @app.get('/logs', response_class=HTMLResponse)
-    # def get_logs(request: Request):
-    #     return templates.TemplateResponse('logs.html', {'request': request})
 
     @catch_exceptions
     def get_auth_token(self):
@@ -107,6 +102,7 @@ class RocketChatBot:
             'msg': message,
         }
 
+        # Если передан url, добавляем его в свойства кнопки (для админа)
         if url is not None:
             action_structure['url'] = url
 
@@ -119,6 +115,7 @@ class RocketChatBot:
         actions.append(
             self.get_action_structure(CREATE_TASK, None, CREATE_TASK)
         )
+        actions.append(self.get_action_structure(BACK, None, BACK))
         actions.append(self.get_action_structure(START_OVER, None, START_OVER))
 
         if is_admin:
@@ -166,7 +163,6 @@ class RocketChatBot:
     @catch_exceptions
     def go_to_next_stage(self, creation_stage, room_id, message_text, user_id):
         """Логика переходов между этапы создания задачи"""
-        global jira_client
         if creation_stage == 0:
             self.send_message(
                 self.get_data_for_stage_0(
@@ -178,7 +174,6 @@ class RocketChatBot:
 
         # Стадия 1 - ожидание ввода названия проекта от пользователя
         elif creation_stage == 1:
-            jira_client = JiraClient()
             projects = jira_client.get_projects()
 
             # Бот отправляет в чат список проектов в виде кнопок
@@ -192,12 +187,16 @@ class RocketChatBot:
             # Перейти на следующую стадию
             self.creation_stage = 2
 
-        # Стадия 1 - ожидание ввода названия задачи от пользователя
+        # Стадия 2 - ожидание ввода названия задачи от пользователя
         elif creation_stage == 2:
             projects = jira_client.get_projects()
 
+            if jira_client.get_project_name() is not None:
+                self.send_message(self.get_base_data(room_id, ENTER_TASK_NAME))
+                self.creation_stage = 3
+
             # Если проект с таким названием существует
-            if any(message_text == project.name for project in projects):
+            elif any(message_text == project.name for project in projects):
                 self.send_message(self.get_base_data(room_id, ENTER_TASK_NAME))
                 jira_client.set_project_name(message_text)
                 self.creation_stage = 3
@@ -217,9 +216,12 @@ class RocketChatBot:
             projects = jira_client.get_projects()
 
             # Ищем ключ проекта по его названию
+            project_key = None
+            project_id = None
             for project in projects:
                 if jira_client.get_project_name() == project.name:
                     project_key = project.key
+                    project_id = project.id
                     break
 
             # Получаем название задачи
@@ -243,7 +245,7 @@ class RocketChatBot:
             )
 
             # Добавляем запись о создании задачи
-            database.insert_task_record(user_id, task_link)
+            database.insert_task_record(user_id, task_link, project_id)
 
             # Все заново
             self.creation_stage = 0
@@ -265,7 +267,7 @@ class RocketChatBot:
                             break
 
                     else:
-                        # Добавляем пользователя чата в БД, если он еще не доабвлен
+                        # Добавляем пользователя чата в БД, если он еще не добавлен
                         database.insert_new_user(
                             dm['lastMessage']['u']['username'],
                             user_id,
@@ -273,7 +275,10 @@ class RocketChatBot:
                     last_msg = dm['lastMessage']
                     message_text = last_msg['msg']
 
-                    if message_text == CREATE_TASK:
+                    if message_text == BACK:
+                        if self.creation_stage > 0:
+                            self.dec_creation_stage()
+                    elif message_text == CREATE_TASK:
                         self.creation_stage = 1
                     elif message_text == START_OVER:
                         self.creation_stage = 0
@@ -281,6 +286,16 @@ class RocketChatBot:
                     self.go_to_next_stage(
                         self.creation_stage, room_id, message_text, user_id
                     )
+
+    def dec_creation_stage(self):
+        if self.creation_stage == 1:
+            self.creation_stage = 0
+        elif self.creation_stage == 2:
+            self.creation_stage = 0
+        elif self.creation_stage == 3:
+            self.creation_stage = 1
+        elif self.creation_stage == 4:
+            self.creation_stage = 2
 
     def run(self):
         """Основная функция, отвечающая за запуск бота"""

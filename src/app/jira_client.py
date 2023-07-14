@@ -1,4 +1,5 @@
 import json
+import logging
 from jira import JIRA
 
 
@@ -9,11 +10,20 @@ class JiraClient:
 
     def connect(self):
         """Подключиться к серверу Jira"""
-        with open('src/data/config_jira.json') as jira_config_file:
-            jira_config = json.load(jira_config_file)
-            url = jira_config['url']
-            jira_token = jira_config['jira_token']
-            self.jira = JIRA(server=url, token_auth=jira_token)
+        try:
+            with open('src/data/config_jira.json') as jira_config_file:
+                jira_config = json.load(jira_config_file)
+                url = jira_config['url']
+                jira_token = jira_config['jira_token']
+                self.jira = JIRA(server=url, token_auth=jira_token)
+        except FileNotFoundError:
+            logging.error('Ошибка: файл config_jira.json не найден.')
+        except json.JSONDecodeError:
+            logging.error(
+                'Ошибка: некорректный формат JSON в файле config_jira.json.'
+            )
+        except Exception as ex:
+            logging.exception(f'Ошибка при подключении к серверу Jira: {ex}')
 
     def get_data_for_issue(self, project_key, summary, description):
         """Получить JSON-представление для создания задачи"""
@@ -26,29 +36,42 @@ class JiraClient:
 
     def get_projects(self):
         """Получить список проектов из результатов запроса к серверу"""
-        if not self.jira:
-            self.connect()
-        return self.jira.projects()
+        try:
+            if not self.jira:
+                self.connect()
+            return self.jira.projects()
+        except Exception as ex:
+            logging.exception(f'Ошибка при получении списка проектов: {ex}')
+            return []
 
     def create_new_issue(self, project_key, summary, description):
         """Создать задачу в проекте"""
-        if not self.jira:
-            self.connect()
-        self.jira.create_issue(
-            fields=self.get_data_for_issue(project_key, summary, description)
-        )
+        try:
+            if not self.jira:
+                self.connect()
+            self.jira.create_issue(
+                fields=self.get_data_for_issue(
+                    project_key, summary, description
+                )
+            )
+        except Exception as ex:
+            logging.exception(f'Ошибка при создании задачи: {ex}')
 
     def get_issue_link(self, project_key, issue_summary):
-        # Запрос на поиск задач с указанным названием в проекте
-        issues = self.jira.search_issues(
-            f'project={project_key} AND summary~"{issue_summary}"'
-        )
-        # Проверка, найдены ли задачи
-        if len(issues) > 0:
-            # Получение ключа последней найденной задачи
-            last_issue = max(issues, key=lambda issue: int(issue.id))
-            issue_key = last_issue.key
-            return f'{self.jira.server_url}/browse/{issue_key}'
+        """Запрос на поиск задач с указанным названием в проекте"""
+        try:
+            issues = self.jira.search_issues(
+                f'project={project_key} AND summary~"{issue_summary}"'
+            )
+            # Проверка, найдены ли задачи
+            if len(issues) > 0:
+                # Получение ключа последней найденной задачи
+                last_issue = max(issues, key=lambda issue: int(issue.id))
+                issue_key = last_issue.key
+                return f'{self.jira.server_url}/browse/{issue_key}'
+        except Exception as ex:
+            logging.exception(f'Ошибка при получении ссылки на задачу: {ex}')
+        return None
 
     def get_project_name(self):
         return self.project_name

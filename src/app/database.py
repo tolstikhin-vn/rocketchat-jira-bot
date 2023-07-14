@@ -43,7 +43,7 @@ def create_session():
         return session
     except (FileNotFoundError, KeyError, SQLAlchemyError) as ex:
         logging.error(f'Ошибка при создании сессии базы данных: {ex}')
-        return None 
+        return None
 
 
 def close_session(session):
@@ -145,7 +145,7 @@ def insert_task_record(id_user, task_link, project_id):
                 user=user.id,
                 task_link=task_link,
                 datetime_creating=datetime.now(),
-                project_id = project_id
+                project_id=project_id,
             )
             session.add(new_task_log)
             session.commit()
@@ -186,7 +186,7 @@ def get_logs(project_id, date):
             )
     except SQLAlchemyError as ex:
         logging.error(
-            f'Возникла ошибка при выполнении операции с базой данных: {ex}'
+            f'Произошла ошибка при выполнении операции с базой данных: {ex}'
         )
     finally:
         close_session(session)

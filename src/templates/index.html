@@ -4,40 +4,47 @@
       <title>История создания задач</title>
       <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
       <script src="static/js/script.js"></script>
+      <link rel="stylesheet" type="text/css" href="static/css/style.css" />
    </head>
    <body>
-      <h2>Выберите проект:</h2>
-      <select id="project-select" onchange="sendData()">
-         <option value="" selected>Выберите проект</option>
-         {% for project in projects %}
-         <option value="{{ project.id }}">{{ project.name }}</option>
-         {% endfor %}
-      </select>
+      <div id="params-container">
+         <h2>Выберите проект:</h2>
+         <select id="project-select" onchange="sendData()">
+            <option value="" selected>Выберите проект</option>
+            {% for project in projects %}
+            <option value="{{ project.id }}">{{ project.name }}</option>
+            {% endfor %}
+         </select>
 
-      <h2>Выберите дату:</h2>
-      <input type="date" id="date-picker" onchange="sendData()" />
-      <table>
-         <thead>
-            <tr>
-               <th>№</th>
-               <th>Имя</th>
-               <th>ID</th>
-               <th>Задача</th>
-               <th>Дата создания</th>
-            </tr>
-         </thead>
-         <tbody id="log-table-body">
-            {% if logs is not none %} {% for log, user_name, user_id in logs %}
-            <tr>
-               <td>{{ loop.index }}</td>
-               <td>{{ user_name }}</td>
-               <td>{{ user_id }}</td>
-               {% set task = log.task_link.split("browse/")|last %}
-               <td><a href="{{ log.task_link }}">{{ task }}</a></td>
-               <td>{{ log.datetime_creating }}</td>
-            </tr>
-            {% endfor %} {% endif %}
-         </tbody>
-      </table>
+         <h2>Выберите дату:</h2>
+         <input type="date" id="date-picker" onchange="sendData()" />
+      </div>
+
+      <div id="table-container">
+         <table id="my-table">
+            <thead>
+               <tr>
+                  <th>№</th>
+                  <th>Имя</th>
+                  <th>ID</th>
+                  <th>Задача</th>
+                  <th>Дата создания</th>
+               </tr>
+            </thead>
+            <tbody id="log-table-body">
+               {% if logs is not none %} {% for log, user_name, user_id in logs
+               %}
+               <tr>
+                  <td>{{ loop.index }}</td>
+                  <td>{{ user_name }}</td>
+                  <td>{{ user_id }}</td>
+                  {% set task = log.task_link.split("browse/")|last %}
+                  <td><a href="{{ log.task_link }}">{{ task }}</a></td>
+                  <td>{{ log.datetime_creating }}</td>
+               </tr>
+               {% endfor %} {% endif %}
+            </tbody>
+         </table>
+      </div>
    </body>
 </html>

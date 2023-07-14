@@ -16,7 +16,7 @@ PROJECT_NOT_FOUND = 'Проект с таким названием не найд
 ENTER_TASK_DESC = 'Введите описание для будущей задачи'
 USER_BANNED = 'Вы заблокированы администратором!'
 
-# Будущий экземпляр класса JiraClient
+# Экземпляр класса JiraClient
 jira_client = JiraClient()
 
 # Экземпляр класса Issue

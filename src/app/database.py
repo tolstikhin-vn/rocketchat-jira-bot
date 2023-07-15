@@ -63,7 +63,6 @@ def check_user_exists(user_id):
         user = session.query(User).filter_by(user_id=user_id).first()
         return user is not None
     except SQLAlchemyError as ex:
-        session.rollback()
         logging.error(
             f'Возникла ошибка при выполнении операции с базой данных: {ex}'
         )
@@ -84,7 +83,6 @@ def check_user_banned(user_id):
         )
         return user is None
     except SQLAlchemyError as ex:
-        session.rollback()
         logging.error(
             f'Возникла ошибка при выполнении операции с базой данных: {ex}'
         )
@@ -105,7 +103,6 @@ def check_user_admin(user_id):
         )
         return user is not None
     except SQLAlchemyError as ex:
-        session.rollback()
         logging.error(
             f'Возникла ошибка при выполнении операции с базой данных: {ex}'
         )

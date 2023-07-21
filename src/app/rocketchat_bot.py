@@ -244,23 +244,29 @@ class RocketChatBot:
             )
 
             # Создаем новую задачу
-            jira_client.create_new_issue(
+            if jira_client.create_new_issue(
                 project_key,
                 issue_summary,
                 issue.get_issue_description(),
-            )
-
-            # Получаем ссылку на задачу
-            task_link: str = jira_client.get_issue_link(
-                project_key, issue_summary
-            )
-
-            self.send_message(
-                self.get_base_data(
-                    room_id,
-                    f'[Задача]({task_link}) успешно создана!',
+            ):
+                # Получаем ссылку на задачу
+                task_link: str = jira_client.get_issue_link(
+                    project_key, issue_summary
                 )
-            )
+
+                self.send_message(
+                    self.get_base_data(
+                        room_id,
+                        f'[Задача]({task_link}) успешно создана!',
+                    )
+                )
+            else:
+                self.send_message(
+                    self.get_base_data(
+                        room_id,
+                        'Ошибка создания задачи. Попробуйте позднее.',
+                    )
+                )
 
             # Добавляем запись о создании задачи
             database.insert_task_record(user_id, task_link, project_id)

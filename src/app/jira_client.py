@@ -61,8 +61,10 @@ class JiraClient:
                     project_key, summary, description
                 )
             )
+            return True
         except Exception as ex:
             logging.exception(f'Ошибка при создании задачи: {ex}')
+            return False
 
     def get_issue_link(
         self, project_key: str, issue_summary: str

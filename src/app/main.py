@@ -30,10 +30,11 @@ def get_logs(
     endDate: Optional[str] = None,
 ):
     """Обработчик GET-запросов для отображения логов созданных задач"""
+
     try:
         logs: List[int] = []
         if project_id is not None:
-            logs: List[Tuple] = database.get_logs(
+            logs: List[Tuple] = database.get_logs_from_db(
                 project_id, startDate, endDate
             )
             logs_data: List[Dict[str, Any]] = [

@@ -91,7 +91,7 @@ def check_user_banned(user_id) -> bool:
 
 
 def check_user_admin(user_id) -> bool:
-    """Проверка забанен ли пользователь"""
+    """Проверка Пользователя на роль админа"""
     session = create_session()
     if session is None:
         return
@@ -155,7 +155,7 @@ def insert_task_record(id_user, task_link, project_id) -> None:
         close_session(session)
 
 
-def get_logs(project_id, startDate, endDate) -> List[Tuple]:
+def get_logs_from_db(project_id, startDate, endDate) -> List[Tuple]:
     """Получить информацию об истории создания задач для формирования таблицы"""
     session = create_session()
     if session is None:

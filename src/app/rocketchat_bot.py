@@ -258,7 +258,7 @@ class RocketChatBot:
             self.send_message(
                 self.get_base_data(
                     room_id,
-                    f'[Задача]({task_link}) успешно создана',
+                    f'[Задача]({task_link}) успешно создана!',
                 )
             )
 

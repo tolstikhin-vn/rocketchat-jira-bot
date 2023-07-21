@@ -9,13 +9,15 @@ body {
 }
 
 #project-select {
-   width: 200px;
+   width: 213px;
    padding: 5px;
    font-size: 1rem;
-   margin-bottom: 20px;
+   margin-bottom: 10px;
 }
 
-#date-picker {
+#date-range-picker {
+   width: 200px;
+   cursor: pointer;
    padding: 5px;
    font-size: 1rem;
    margin-bottom: 20px;

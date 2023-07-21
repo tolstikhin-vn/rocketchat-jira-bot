@@ -155,32 +155,32 @@ def insert_task_record(id_user, task_link, project_id):
         close_session(session)
 
 
-def get_logs(project_id, date):
+def get_logs(project_id, startDate, endDate):
+    """Получить информацию об истории создания задач для формирования таблицы"""
     session = create_session()
     if session is None:
         return
     try:
-        if date is None:
-            return (
-                session.query(TaskLog, User.user_name, User.user_id)
-                .join(User, TaskLog.user == User.id)
-                .where(TaskLog.project_id == project_id)
-                .order_by(TaskLog.datetime_creating.desc())
-                .all()
+        # Преобразование startDate и endDate в объекты типа datetime
+        start_datetime = datetime.strptime(startDate, '%Y-%m-%d').replace(
+            hour=0, minute=0, second=0
+        )
+        end_datetime = datetime.strptime(endDate, '%Y-%m-%d').replace(
+            hour=23, minute=59, second=59
+        )
+
+        return (
+            session.query(TaskLog, User.user_name, User.user_id)
+            .join(User, TaskLog.user == User.id)
+            .where(
+                TaskLog.project_id == project_id,
+                TaskLog.datetime_creating.between(
+                    start_datetime, end_datetime
+                ),
             )
-        else:
-            # Объект выбранной даты из календаря
-            date_obj = datetime.strptime(date, '%Y-%m-%d')
-            return (
-                session.query(TaskLog, User.user_name, User.user_id)
-                .join(User, TaskLog.user == User.id)
-                .where(
-                    TaskLog.project_id == project_id,
-                    func.DATE(TaskLog.datetime_creating) == date_obj,
-                )
-                .order_by(TaskLog.datetime_creating.desc())
-                .all()
-            )
+            .order_by(TaskLog.datetime_creating.desc())
+            .all()
+        )
     except SQLAlchemyError as ex:
         logging.error(
             f'Произошла ошибка при выполнении операции с базой данных: {ex}'

@@ -4,6 +4,23 @@
       <title>История создания задач</title>
       <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
       <script src="static/js/script.js"></script>
+      <script
+         type="text/javascript"
+         src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"
+      ></script>
+      <script
+         type="text/javascript"
+         src="https://cdn.jsdelivr.net/momentjs/latest/moment-with-locales.min.js"
+      ></script>
+      <script
+         type="text/javascript"
+         src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"
+      ></script>
+      <link
+         rel="stylesheet"
+         type="text/css"
+         href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css"
+      />
       <link rel="icon" href="static/images/favicon.png" type="image/x-icon" />
       <link rel="stylesheet" type="text/css" href="static/css/style.css" />
    </head>
@@ -18,7 +35,8 @@
          </select>
 
          <h2>Выберите дату:</h2>
-         <input type="date" id="date-picker" onchange="sendData()" />
+         <!-- <input type="date" id="date-picker" onchange="sendData()" /> -->
+         <input type="text" id="date-range-picker" onchange="sendData()" />
       </div>
 
       <div id="table-container">

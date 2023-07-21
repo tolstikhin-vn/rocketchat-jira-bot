@@ -26,13 +26,14 @@ app.mount(
 def get_logs(
     request: Request,
     project_id: Optional[int] = None,
-    date: Optional[str] = None,
+    startDate: Optional[str] = None,
+    endDate: Optional[str] = None,
 ):
     """Обработчик GET-запросов для отображения логов созданных задач"""
     try:
         logs = []
         if project_id is not None:
-            logs = database.get_logs(project_id, date)
+            logs = database.get_logs(project_id, startDate, endDate)
             logs_data = [
                 {
                     'user_name': user_name,

@@ -190,6 +190,8 @@ def get_logs(project_id, startDate, endDate) -> List[Tuple]:
 
 
 class User(Base):
+    """Класс для представления таблицы users"""
+
     __tablename__ = 'users'
 
     id: int = Column(Integer, primary_key=True, autoincrement=True)
@@ -200,6 +202,8 @@ class User(Base):
 
 
 class TaskLog(Base):
+    """Класс для представления таблицы tasks_log"""
+
     __tablename__ = 'tasks_log'
 
     id: int = Column(Integer, primary_key=True, autoincrement=True)

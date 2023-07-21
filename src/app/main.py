@@ -3,20 +3,21 @@ import logging
 import threading
 import database
 
+from jira import Project
+from typing import Any, List, Tuple, Set, Dict, Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from typing import Optional
 import uvicorn
 
 from jira_client import JiraClient
 from rocketchat_bot import RocketChatBot
 
-OFFLINE_STATUS = 'offline'
+OFFLINE_STATUS: str = 'offline'
 
-app = FastAPI()
-templates = Jinja2Templates(directory='src/templates')
+app: FastAPI = FastAPI()
+templates: Jinja2Templates = Jinja2Templates(directory='src/templates')
 app.mount(
     '/static', StaticFiles(directory='src/static', html=True), name='static'
 )
@@ -31,10 +32,10 @@ def get_logs(
 ):
     """Обработчик GET-запросов для отображения логов созданных задач"""
     try:
-        logs = []
+        logs: List[int] = []
         if project_id is not None:
             logs = database.get_logs(project_id, startDate, endDate)
-            logs_data = [
+            logs_data: List[Dict[str, Any]] = [
                 {
                     'user_name': user_name,
                     'user_id': user_id,
@@ -48,8 +49,8 @@ def get_logs(
             ]
             return json.dumps(logs_data)
 
-        jira_client = JiraClient()
-        projects = jira_client.get_projects()
+        jira_client: JiraClient = JiraClient()
+        projects: List[Project] = jira_client.get_projects()
         return templates.TemplateResponse(
             'index.html',
             {'request': request, 'logs': logs, 'projects': projects},
@@ -64,18 +65,40 @@ def get_logs(
         logging.exception(f'Возникло исключение: {ex3}')
 
 
-def run_bot():
+def load_uvicorn_conf() -> Tuple[str, int]:
+    """Загрузка параметров host и port из конфигурационного файла."""
+    try:
+        with open('src/data/config_uvicorn.json') as app_json_file:
+            config_uvicorn: Dict[str, Any] = json.load(app_json_file)
+
+        host = config_uvicorn['host']
+        port = config_uvicorn['port']
+        return host, port
+
+    except FileNotFoundError as ex1:
+        raise Exception(f'Не удалось найти конфигурационный файл: {ex1}')
+
+    except json.JSONDecodeError as ex2:
+        raise Exception(f'Ошибка декодирования JSON: {ex2}')
+
+    except Exception as ex3:
+        raise Exception(f'Возникло исключение: {ex3}')
+
+
+def run_bot() -> None:
     try:
         with open('src/data/config_bot.json') as rc_json_file:
-            config_rc = json.load(rc_json_file)
+            config_rc: Dict[str, str] = json.load(rc_json_file)
 
         # Получить параметры аутентификации для работы с ботом
-        base_url = config_rc['base_url']
-        username = config_rc['username']
-        password = config_rc['password']
-        bot_id = config_rc['bot_id']
+        base_url: str = config_rc['base_url']
+        username: str = config_rc['username']
+        password: str = config_rc['password']
+        bot_id: str = config_rc['bot_id']
 
-        bot = RocketChatBot(base_url, username, password, bot_id)
+        bot: RocketChatBot = RocketChatBot(
+            base_url, username, password, bot_id
+        )
 
         # Запуск бота
         bot.run()
@@ -97,6 +120,8 @@ if __name__ == '__main__':
         bot_thread = threading.Thread(target=run_bot)
         bot_thread.start()
 
-        uvicorn.run(app, host='127.0.0.1', port=8000)
+        host, port = load_uvicorn_conf()
+
+        uvicorn.run(app, host=host, port=port)
     except Exception as ex:
         logging.exception(f'Возникло исключение: {ex}')

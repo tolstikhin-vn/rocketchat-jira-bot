@@ -161,7 +161,9 @@ class RocketChatBot:
         return {'roomId': room_id, 'text': message}
 
     @catch_exceptions
-    def go_to_next_stage(self, creation_stage, room_id, message_text, user_id):
+    def go_to_next_stage(
+        self, creation_stage, room_id, message_text, user_id, user_name
+    ):
         """Логика переходов между этапы создания задачи"""
         if creation_stage == 0:
             self.send_message(
@@ -225,7 +227,7 @@ class RocketChatBot:
                     break
 
             # Получаем название задачи
-            issue_summary = issue.get_issue_summary()
+            issue_summary = f'(от {user_name}) {issue.get_issue_summary()}'
 
             # Создаем новую задачу
             jira_client.create_new_issue(
@@ -240,7 +242,7 @@ class RocketChatBot:
             self.send_message(
                 self.get_base_data(
                     room_id,
-                    f'Ваша задача: [клик]({task_link})',
+                    f'[Задача]({task_link}) успешно создана',
                 )
             )
 
@@ -283,11 +285,17 @@ class RocketChatBot:
                     elif message_text == START_OVER:
                         self.creation_stage = 0
 
+                    user_name = dm['lastMessage']['u']['username']
                     self.go_to_next_stage(
-                        self.creation_stage, room_id, message_text, user_id
+                        self.creation_stage,
+                        room_id,
+                        message_text,
+                        user_id,
+                        user_name,
                     )
 
     def dec_creation_stage(self):
+        """Уменьшить индекс текущей стадии создания при нажатии кнопки Назад"""
         if self.creation_stage == 1:
             self.creation_stage = 0
         elif self.creation_stage == 2:
@@ -304,6 +312,6 @@ class RocketChatBot:
         while True:
             try:
                 self.process_messages()
-                time.sleep(1)
+                time.sleep(0.1)
             except TimeoutError:
                 time.sleep(10)

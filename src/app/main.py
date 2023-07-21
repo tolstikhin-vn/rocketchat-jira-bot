@@ -2,9 +2,8 @@ import json
 import logging
 import threading
 import database
+from typing import Any, List, Tuple, Dict, Optional
 
-from jira import Project
-from typing import Any, List, Tuple, Set, Dict, Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -34,7 +33,9 @@ def get_logs(
     try:
         logs: List[int] = []
         if project_id is not None:
-            logs = database.get_logs(project_id, startDate, endDate)
+            logs: List[Tuple] = database.get_logs(
+                project_id, startDate, endDate
+            )
             logs_data: List[Dict[str, Any]] = [
                 {
                     'user_name': user_name,
@@ -50,7 +51,9 @@ def get_logs(
             return json.dumps(logs_data)
 
         jira_client: JiraClient = JiraClient()
-        projects: List[Project] = jira_client.get_projects()
+        projects: List[Any] = jira_client.get_projects()
+
+        # Представление TemplateResponse для формирование таблицы
         return templates.TemplateResponse(
             'index.html',
             {'request': request, 'logs': logs, 'projects': projects},
@@ -66,7 +69,7 @@ def get_logs(
 
 
 def load_uvicorn_conf() -> Tuple[str, int]:
-    """Загрузка параметров host и port из конфигурационного файла."""
+    """Загрузить параметры host и port из конфигурационного файла"""
     try:
         with open('src/data/config_uvicorn.json') as app_json_file:
             config_uvicorn: Dict[str, Any] = json.load(app_json_file)
@@ -86,11 +89,12 @@ def load_uvicorn_conf() -> Tuple[str, int]:
 
 
 def run_bot() -> None:
+    """Получить все параметры аутентификации и вызвать метод запуска бота с этими параметрами"""
     try:
         with open('src/data/config_bot.json') as rc_json_file:
             config_rc: Dict[str, str] = json.load(rc_json_file)
 
-        # Получить параметры аутентификации для работы с ботом
+        # Параметры аутентификации
         base_url: str = config_rc['base_url']
         username: str = config_rc['username']
         password: str = config_rc['password']

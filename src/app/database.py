@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any, List, Tuple, Dict
 import logging
 import json
 
@@ -9,36 +10,35 @@ from sqlalchemy import (
     String,
     DateTime,
     Boolean,
-    func,
 )
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.engine.url import URL
 
-Base = declarative_base()
+Base: Any = declarative_base()
 
 
-def create_session():
+def create_session() -> sessionmaker:
     """Создать сессию для работы с базой данных"""
     try:
         with open('src/data/config_mysql.json') as db_config_file:
-            config_data = json.load(db_config_file)
+            config_data: Dict[str, Any] = json.load(db_config_file)
 
-        drivername = config_data['drivername']
-        username = config_data['username']
-        password = config_data['password']
-        host = config_data['host']
-        port = config_data['port']
-        database = config_data['database']
+        drivername: str = config_data['drivername']
+        username: str = config_data['username']
+        password: str = config_data['password']
+        host: str = config_data['host']
+        port: int = config_data['port']
+        database: str = config_data['database']
 
-        url_object = URL.create(
+        url_object: URL = URL.create(
             drivername, username, password, host, port, database
         )
         engine = create_engine(url_object, echo=False)
 
-        Session = sessionmaker(bind=engine)
-        session = Session()
+        Session: sessionmaker = sessionmaker(bind=engine)
+        session: sessionmaker = Session()
 
         return session
     except (FileNotFoundError, KeyError, SQLAlchemyError) as ex:
@@ -46,7 +46,7 @@ def create_session():
         return None
 
 
-def close_session(session):
+def close_session(session) -> None:
     """Закрыть сессию базы данных"""
     try:
         session.close()
@@ -54,7 +54,7 @@ def close_session(session):
         logging.error(f'Ошибка при закрытии сессии базы данных: {ex}')
 
 
-def check_user_exists(user_id):
+def check_user_exists(user_id) -> bool:
     """Проверка существования пользователя в БД по user_id"""
     session = create_session()
     if session is None:
@@ -70,7 +70,7 @@ def check_user_exists(user_id):
         close_session(session)
 
 
-def check_user_banned(user_id):
+def check_user_banned(user_id) -> bool:
     """Проверка забанен ли пользователь"""
     session = create_session()
     if session is None:
@@ -90,7 +90,7 @@ def check_user_banned(user_id):
         close_session(session)
 
 
-def check_user_admin(user_id):
+def check_user_admin(user_id) -> bool:
     """Проверка забанен ли пользователь"""
     session = create_session()
     if session is None:
@@ -110,7 +110,7 @@ def check_user_admin(user_id):
         close_session(session)
 
 
-def insert_new_user(user_name, user_id):
+def insert_new_user(user_name, user_id) -> None:
     """Добавить в БД информацию о пользователе, который начал диалог с ботом"""
     session = create_session()
     if session is None:
@@ -128,7 +128,7 @@ def insert_new_user(user_name, user_id):
         close_session(session)
 
 
-def insert_task_record(id_user, task_link, project_id):
+def insert_task_record(id_user, task_link, project_id) -> None:
     """Добавить новую запись в таблицу tasks_log о создании задачи пользователем"""
     session = create_session()
     if session is None:
@@ -155,19 +155,19 @@ def insert_task_record(id_user, task_link, project_id):
         close_session(session)
 
 
-def get_logs(project_id, startDate, endDate):
+def get_logs(project_id, startDate, endDate) -> List[Tuple]:
     """Получить информацию об истории создания задач для формирования таблицы"""
     session = create_session()
     if session is None:
         return
     try:
         # Преобразование startDate и endDate в объекты типа datetime
-        start_datetime = datetime.strptime(startDate, '%Y-%m-%d').replace(
-            hour=0, minute=0, second=0
-        )
-        end_datetime = datetime.strptime(endDate, '%Y-%m-%d').replace(
-            hour=23, minute=59, second=59
-        )
+        start_datetime: datetime = datetime.strptime(
+            startDate, '%Y-%m-%d'
+        ).replace(hour=0, minute=0, second=0)
+        end_datetime: datetime = datetime.strptime(
+            endDate, '%Y-%m-%d'
+        ).replace(hour=23, minute=59, second=59)
 
         return (
             session.query(TaskLog, User.user_name, User.user_id)
@@ -192,18 +192,18 @@ def get_logs(project_id, startDate, endDate):
 class User(Base):
     __tablename__ = 'users'
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_name = Column(String(50), nullable=False)
-    user_id = Column(String(20), nullable=False, unique=True)
-    is_admin = Column(Boolean, nullable=False, default=False)
-    banned = Column(Boolean, nullable=False, default=False)
+    id: int = Column(Integer, primary_key=True, autoincrement=True)
+    user_name: str = Column(String(50), nullable=False)
+    user_id: str = Column(String(20), nullable=False, unique=True)
+    is_admin: bool = Column(Boolean, nullable=False, default=False)
+    banned: bool = Column(Boolean, nullable=False, default=False)
 
 
 class TaskLog(Base):
     __tablename__ = 'tasks_log'
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user = Column(Integer, nullable=False)
-    task_link = Column(String(100), nullable=False)
-    datetime_creating = Column(DateTime, nullable=False)
-    project_id = Column(DateTime, nullable=False)
+    id: int = Column(Integer, primary_key=True, autoincrement=True)
+    user: int = Column(Integer, nullable=False)
+    task_link: str = Column(String(100), nullable=False)
+    datetime_creating: datetime = Column(DateTime, nullable=False)
+    project_id: str = Column(DateTime, nullable=False)

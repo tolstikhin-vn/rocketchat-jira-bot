@@ -1,6 +1,7 @@
 import logging
 import requests
 import time
+from typing import Any, List, Dict, Optional
 
 import database
 from jira_client import Issue, JiraClient
@@ -17,10 +18,10 @@ ENTER_TASK_DESC = 'Введите описание для будущей зад�
 USER_BANNED = 'Вы заблокированы администратором!'
 
 # Экземпляр класса JiraClient
-jira_client = JiraClient()
+jira_client: JiraClient = JiraClient()
 
 # Экземпляр класса Issue
-issue = Issue()
+issue: Issue = Issue()
 
 
 def catch_exceptions(func):
@@ -36,42 +37,46 @@ def catch_exceptions(func):
 
 
 class RocketChatBot:
+    """Класс для работы с Rocket.Chat"""
 
     # Текущая стадия создания задачи
-    creation_stage = 0
+    creation_stage: int = 0
 
     def __init__(self, base_url, username, password, bot_id):
-        self.base_url = base_url
-        self.username = username
-        self.password = password
-        self.bot_id = bot_id
-        self.auth_token = None
+        self.base_url: str = base_url
+        self.username: str = username
+        self.password: str = password
+        self.bot_id: str = bot_id
+        self.auth_token: Optional[str] = None
 
     @catch_exceptions
-    def get_auth_token(self):
+    def get_auth_token(self) -> None:
         """Получить токен авторизации по логину и паролю бота-пользователя для работы от его лица"""
-        login_url = f'{self.base_url}login'
-        data = {'user': self.username, 'password': self.password}
+        login_url: str = f'{self.base_url}login'
+        data: Dict[str, str] = {
+            'user': self.username,
+            'password': self.password,
+        }
         response = requests.post(login_url, json=data)
         response.raise_for_status()
         self.auth_token = response.json()['data']['authToken']
 
     @catch_exceptions
-    def set_status(self, status_name):
+    def set_status(self, status_name) -> None:
         """Задать статус бота"""
         set_status_url = f'{self.base_url}users.setStatus'
-        headers = {
+        headers: Dict[str, str] = {
             'X-Auth-Token': self.auth_token,
             'X-User-Id': self.bot_id,
         }
-        status_data = {'status': status_name}
+        status_data: Dict[str, str] = {'status': status_name}
         requests.post(set_status_url, headers=headers, json=status_data)
 
     @catch_exceptions
-    def send_message(self, data):
-        """Отправить сообщения в чат"""
+    def send_message(self, data: dict) -> None:
+        """Отправить сообщение в чат"""
         send_msg_url = f'{self.base_url}chat.postMessage'
-        headers = {
+        headers: Dict[str, str] = {
             'X-Auth-Token': self.auth_token,
             'X-User-Id': self.bot_id,
         }
@@ -79,20 +84,23 @@ class RocketChatBot:
         requests.post(send_msg_url, headers=headers, json=data)
 
     @catch_exceptions
-    def get_direct_messages(self):
-        """Получить список сообщений"""
-        dm_url = f'{self.base_url}im.list'
-        headers = {
+    def get_direct_messages(self) -> List[Dict[str, Any]]:
+        """Получить список сообщений из чата"""
+        dm_url: str = f'{self.base_url}im.list'
+        headers: Dict[str, str] = {
             'X-Auth-Token': self.auth_token,
             'X-User-Id': self.bot_id,
         }
         response = requests.get(dm_url, headers=headers)
         response.raise_for_status()
-        dms = response.json()['ims']
+        dms: List[Dict[str, Any]] = response.json()['ims']
         return dms
 
-    def get_action_structure(self, text, url, message):
-        action_structure = {
+    def get_action_structure(
+        self, text: str, url: Optional[str], message: str
+    ) -> Dict[str, Any]:
+        """Получить структуру с кнопкой для actions в сообщении Rocket.Chat"""
+        action_structure: Dict[str, Any] = {
             'type': 'button',
             'text': text,
             'msg_in_chat_window': True,
@@ -108,10 +116,12 @@ class RocketChatBot:
 
         return action_structure
 
-    def get_data_for_stage_0(self, room_id, message, is_admin):
-        """Получение предствления для вывода сообщения с кнопкой создания задачи"""
+    def get_data_for_stage_0(
+        self, room_id: int, message: str, is_admin: bool
+    ) -> Dict[str, Any]:
+        """Получить представление для вывода сообщения с кнопкой создания задачи"""
 
-        actions = []
+        actions: List[Dict[str, Any]] = []
         actions.append(
             self.get_action_structure(CREATE_TASK, None, CREATE_TASK)
         )
@@ -135,9 +145,11 @@ class RocketChatBot:
             ],
         }
 
-    def get_data_for_stage_1(self, room_id, projects):
-        """Получение представление для вывода списка проектов в чат"""
-        actions = []
+    def get_data_for_stage_1(
+        self, room_id: int, projects: List[Any]
+    ) -> Dict[str, Any]:
+        """Получить представление для вывода списка проектов в чат"""
+        actions: List[Dict[str, Any]] = []
 
         # Сгенерировать кнопки по количеству проектов
         for project in projects:
@@ -156,15 +168,15 @@ class RocketChatBot:
             ],
         }
 
-    def get_base_data(self, room_id, message):
+    def get_base_data(self, room_id: int, message: str) -> Dict[str, str]:
         """Получить базовое JSON-представление из id комнаты и сообщения"""
         return {'roomId': room_id, 'text': message}
 
     @catch_exceptions
     def go_to_next_stage(
         self, creation_stage, room_id, message_text, user_id, user_name
-    ):
-        """Логика переходов между этапы создания задачи"""
+    ) -> None:
+        """Логика переходов между этапами создания задачи"""
         if creation_stage == 0:
             self.send_message(
                 self.get_data_for_stage_0(
@@ -176,7 +188,7 @@ class RocketChatBot:
 
         # Стадия 1 - ожидание ввода названия проекта от пользователя
         elif creation_stage == 1:
-            projects = jira_client.get_projects()
+            projects: List[Any] = jira_client.get_projects()
 
             # Бот отправляет в чат список проектов в виде кнопок
             self.send_message(
@@ -191,7 +203,7 @@ class RocketChatBot:
 
         # Стадия 2 - ожидание ввода названия задачи от пользователя
         elif creation_stage == 2:
-            projects = jira_client.get_projects()
+            projects: List[Any] = jira_client.get_projects()
 
             if jira_client.get_project_name() is not None:
                 self.send_message(self.get_base_data(room_id, ENTER_TASK_NAME))
@@ -215,11 +227,11 @@ class RocketChatBot:
         # Стадия 4 - создание задачи исходя из полученных данных от пользователя
         elif creation_stage == 4:
             issue.set_issue_description(message_text)
-            projects = jira_client.get_projects()
+            projects: List[Any] = jira_client.get_projects()
 
             # Ищем ключ проекта по его названию
-            project_key = None
-            project_id = None
+            project_key: Optional[str] = None
+            project_id: Optional[int] = None
             for project in projects:
                 if jira_client.get_project_name() == project.name:
                     project_key = project.key
@@ -227,7 +239,9 @@ class RocketChatBot:
                     break
 
             # Получаем название задачи
-            issue_summary = f'(от {user_name}) {issue.get_issue_summary()}'
+            issue_summary: str = (
+                f'(от {user_name}) {issue.get_issue_summary()}'
+            )
 
             # Создаем новую задачу
             jira_client.create_new_issue(
@@ -237,7 +251,9 @@ class RocketChatBot:
             )
 
             # Получаем ссылку на задачу
-            task_link = jira_client.get_issue_link(project_key, issue_summary)
+            task_link: str = jira_client.get_issue_link(
+                project_key, issue_summary
+            )
 
             self.send_message(
                 self.get_base_data(
@@ -253,13 +269,14 @@ class RocketChatBot:
             self.creation_stage = 0
 
     @catch_exceptions
-    def process_messages(self):
+    def process_messages(self) -> None:
         """Обработать новое сообщение"""
-        dms = self.get_direct_messages()
+        # Список сообщений из чата
+        dms: List[Dict[str, Any]] = self.get_direct_messages()
         if dms is not None:
             for dm in dms:
-                user_id = dm['lastMessage']['u']['_id']
-                room_id = dm['_id']
+                user_id: str = dm['lastMessage']['u']['_id']
+                room_id: str = dm['_id']
                 if 'lastMessage' in dm and user_id != self.bot_id:
                     if database.check_user_exists(user_id):
                         if database.check_user_banned(user_id):
@@ -267,15 +284,14 @@ class RocketChatBot:
                                 self.get_base_data(room_id, USER_BANNED)
                             )
                             break
-
                     else:
                         # Добавляем пользователя чата в БД, если он еще не добавлен
                         database.insert_new_user(
                             dm['lastMessage']['u']['username'],
                             user_id,
                         )
-                    last_msg = dm['lastMessage']
-                    message_text = last_msg['msg']
+                    last_msg: Dict[str, Any] = dm['lastMessage']
+                    message_text: str = last_msg['msg']
 
                     if message_text == BACK:
                         if self.creation_stage > 0:
@@ -285,7 +301,9 @@ class RocketChatBot:
                     elif message_text == START_OVER:
                         self.creation_stage = 0
 
-                    user_name = dm['lastMessage']['u']['username']
+                    user_name: str = dm['lastMessage']['u']['username']
+
+                    # Перейти на новую стадию
                     self.go_to_next_stage(
                         self.creation_stage,
                         room_id,
@@ -294,7 +312,7 @@ class RocketChatBot:
                         user_name,
                     )
 
-    def dec_creation_stage(self):
+    def dec_creation_stage(self) -> None:
         """Уменьшить индекс текущей стадии создания при нажатии кнопки Назад"""
         if self.creation_stage == 1:
             self.creation_stage = 0
@@ -305,7 +323,7 @@ class RocketChatBot:
         elif self.creation_stage == 4:
             self.creation_stage = 2
 
-    def run(self):
+    def run(self) -> None:
         """Основная функция, отвечающая за запуск бота"""
         self.get_auth_token()
         self.set_status(ONLINE_STATUS)
